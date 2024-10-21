@@ -4,6 +4,8 @@
 // @version      2024-10-15
 // @description  try to take over the world!
 // @author       You
+// @updateURL  https://raw.githubusercontent.com/JonoHall/GSS/refs/heads/main/tamper.js
+// @downloadURL  https://raw.githubusercontent.com/JonoHall/GSS/refs/heads/main/tamper.js
 // @match        https://*/EcommOrderImport/View?ecommerceOrderImportPK=*
 // @match        https://phc.gosweetspot.com/ship?order=*
 // @icon         https://gosweetspotcdn.blob.core.windows.net/images/favicon-phc.ico
