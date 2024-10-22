@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GoSweetSpot AutoFill
 // @namespace    http://tampermonkey.net/
-// @version      2024-10-15
+// @version      1.0
 // @description  try to take over the world!
 // @author       You
 // @match        https://*/EcommOrderImport/View?ecommerceOrderImportPK=*
