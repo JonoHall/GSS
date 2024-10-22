@@ -4,10 +4,10 @@
 // @version      2024-10-15
 // @description  try to take over the world!
 // @author       You
+// @match        https://*/EcommOrderImport/View?ecommerceOrderImportPK=*
+// @match        https://phc.gosweetspot.com/ship*
 // @updateURL  https://raw.githubusercontent.com/JonoHall/GSS/refs/heads/main/tamper.js
 // @downloadURL  https://raw.githubusercontent.com/JonoHall/GSS/refs/heads/main/tamper.js
-// @match        https://*/EcommOrderImport/View?ecommerceOrderImportPK=*
-// @match        https://phc.gosweetspot.com/ship?order=*
 // @icon         https://gosweetspotcdn.blob.core.windows.net/images/favicon-phc.ico
 // @grant       GM_setValue
 // @grant       GM_getValue
@@ -96,6 +96,7 @@
         shipInvButton.classList.add("btn","btn-primary","m-l-xs","btn-sm");
         shipInvButton.style.float = "right";
         ibox.prepend(shipInvButton);
+
     }
 
     function GssRun() {
@@ -147,14 +148,6 @@
 
         (inputBox.value == order.postcode) ? inputBox.setAttribute("style", "border-color:#080") : inputBox.setAttribute("style", "border-color:#f00;");
 
-        observeElement(inputBox, "value", function (oldValue, newValue) {
-            if(newValue == order.postcode){
-                inputBox.setAttribute("style", "border-color:#080");
-            } else {
-                inputBox.setAttribute("style", "border-color:#f00;");
-            }
-        });
-
         function observeElement(element, property, callback, delay = 0) {
             let elementPrototype = Object.getPrototypeOf(element);
             if (elementPrototype.hasOwnProperty(property)) {
@@ -176,6 +169,15 @@
             }
         }
 
+        observeElement(inputBox, "value", function (oldValue, newValue) {
+            if(newValue == order.postcode){
+                inputBox.setAttribute("style", "border-color:#080");
+            } else {
+                inputBox.setAttribute("style", "border-color:#f00;");
+            }
+        });
+
+        return true;
 
     }
 
@@ -184,9 +186,15 @@
     }
     else if (/phc\.gosweetspot\.com/.test (location.hostname) ) {
         GM_addValueChangeListener("order", function() {
-            window.location.href = 'https://phc.gosweetspot.com/ship?order='+GM_getValue("order").id;
+            if(GM_getValue("order")) {
+               window.location.href = 'https://phc.gosweetspot.com/ship?order='+GM_getValue("order").id;
+            }
         });
-        GssRun();
+        if(GM_getValue("order")){
+            if(GssRun()) {
+                GM_setValue("order", null);
+            }
+        }
     }
     else {
         // Run fall-back code, if any
