@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         GoSweetSpot AutoFill
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1
 // @description  try to take over the world!
-// @author       You
+// @author       JH
 // @match        https://*/EcommOrderImport/View?ecommerceOrderImportPK=*
 // @match        https://phc.gosweetspot.com/ship*
 // @updateURL  https://raw.githubusercontent.com/JonoHall/GSS/refs/heads/main/tamper.js
@@ -73,27 +73,34 @@
         }
 
         var ibox = document.getElementsByClassName("ibox-content")[0];
+
+        var shipType = document.getElementsByClassName("dl-horizontal m-b-none")[1].getElementsByTagName('dd')[0].innerText;
+
         const shipButton = document.createElement('button');
         var shipButtonI = document.createElement('i');
         shipButtonI.classList.add("fas","fa-truck");
-        shipButton.innerText = ' Ship Order';
+        (shipType == "Pickup") ? shipButton.innerText = ' Ship Pickup Order' : shipButton.innerText = ' Ship Pickup Order';
         shipButton.prepend(shipButtonI);
         shipButton.addEventListener('click', () => {
             ship();
         });
-        shipButton.classList.add("btn","btn-primary","m-l-xs","btn-sm");
+
+        shipButton.classList.add("btn","m-l-xs","btn-sm");
+
+        (shipType == "Pickup") ? shipButton.classList.add("btn-danger") : shipButton.classList.add("btn-primary")
         shipButton.style.float = "right";
         ibox.prepend(shipButton);
 
         const shipInvButton = document.createElement('button');
         var shipInvButtonI = document.createElement('i');
         shipInvButtonI.classList.add("fas","fa-file");
-        shipInvButton.innerText = ' Ship Order + Invoice';
+        (shipType == "Pickup") ? shipInvButton.innerText = ' Ship Pickup Order + Invoice' : shipInvButton.innerText = ' Ship Order + Invoice';
         shipInvButton.prepend(shipInvButtonI);
         shipInvButton.addEventListener('click', () => {
             shipInv();
         });
-        shipInvButton.classList.add("btn","btn-primary","m-l-xs","btn-sm");
+        shipInvButton.classList.add("btn","m-l-xs","btn-sm");
+        (shipType == "Pickup") ? shipInvButton.classList.add("btn-danger") : shipInvButton.classList.add("btn-primary")
         shipInvButton.style.float = "right";
         ibox.prepend(shipInvButton);
 
