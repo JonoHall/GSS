@@ -76,21 +76,6 @@
 
         var shipType = document.getElementsByClassName("dl-horizontal m-b-none")[1].getElementsByTagName('dd')[0].innerText;
 
-        const shipButton = document.createElement('button');
-        var shipButtonI = document.createElement('i');
-        shipButtonI.classList.add("fas","fa-truck");
-        (shipType == "Pickup") ? shipButton.innerText = ' Ship Pickup Order' : shipButton.innerText = ' Ship Pickup Order';
-        shipButton.prepend(shipButtonI);
-        shipButton.addEventListener('click', () => {
-            ship();
-        });
-
-        shipButton.classList.add("btn","m-l-xs","btn-sm");
-
-        (shipType == "Pickup") ? shipButton.classList.add("btn-danger") : shipButton.classList.add("btn-primary")
-        shipButton.style.float = "right";
-        ibox.prepend(shipButton);
-
         const shipInvButton = document.createElement('button');
         var shipInvButtonI = document.createElement('i');
         shipInvButtonI.classList.add("fas","fa-file");
