@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         GoSweetSpot AutoFill
 // @namespace    http://tampermonkey.net/
-// @version      1.2
+// @version      1.4
 // @description  try to take over the world!
 // @author       JH
 // @match        https://*/EcommOrderImport/View?ecommerceOrderImportPK=*
 // @match        https://phc.gosweetspot.com/ship*
+// @match        https://amp.roweadvanced.com.au/EcommOrderImport/ImportOrders
 // @updateURL  https://raw.githubusercontent.com/JonoHall/GSS/refs/heads/main/tamper.js
 // @downloadURL  https://raw.githubusercontent.com/JonoHall/GSS/refs/heads/main/tamper.js
 // @icon         https://gosweetspotcdn.blob.core.windows.net/images/favicon-phc.ico
@@ -173,6 +174,19 @@
 
     }
 
+    function ecommImport() {
+        var iBoxes = document.getElementsByClassName('ibox');
+        Array.from(iBoxes).forEach((iBox) => {
+            var leftCol = iBox.getElementsByClassName('col-lg-6 border-right')[0];
+            if(leftCol){
+                var shipType = leftCol.getElementsByClassName('pull-left')[0];
+                if(!shipType.innerText.includes('Courier')){
+                    shipType.classList.add("text-danger");
+                }
+            }
+        });
+    }
+
     if (/EcommOrderImport\/View/.test (location.pathname) ) {
         run();
     }
@@ -187,6 +201,9 @@
                 GM_setValue("order", null);
             }
         }
+    }
+    else if (/EcommOrderImport\/ImportOrders/.test (location.pathname) ) {
+        ecommImport();
     }
     else {
         // Run fall-back code, if any
