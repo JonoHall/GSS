@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GoSweetSpot AutoFill
 // @namespace    http://tampermonkey.net/
-// @version      1.4
+// @version      1.5
 // @description  try to take over the world!
 // @author       JH
 // @match        https://*/EcommOrderImport/View?ecommerceOrderImportPK=*
@@ -180,7 +180,7 @@
             var leftCol = iBox.getElementsByClassName('col-lg-6 border-right')[0];
             if(leftCol){
                 var shipType = leftCol.getElementsByClassName('pull-left')[0];
-                if(!shipType.innerText.includes('Courier')){
+                if(shipType.innerText.includes('Pickup')){
                     shipType.classList.add("text-danger");
                 }
             }
