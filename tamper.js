@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GoSweetSpot AutoFill
 // @namespace    http://tampermonkey.net/
-// @version      1.5
+// @version      1.6
 // @description  try to take over the world!
 // @author       JH
 // @match        https://*/EcommOrderImport/View?ecommerceOrderImportPK=*
@@ -167,6 +167,41 @@
                 inputBox.setAttribute("style", "border-color:#080");
             } else {
                 inputBox.setAttribute("style", "border-color:#f00;");
+            }
+        });
+
+        var mapAbbrObj = {
+            ROAD: "RD", AVENUE: "AVE", CRESCENT: "CRES", DRIVE: "DR", HIGHWAY: "HWY", LANE: "LN", PLACE: "PL", STREET: "ST", TERRACE: "TCE"
+        };
+
+        var compareAdd1 = order.street1.toUpperCase();
+        compareAdd1 = compareAdd1.replace(/road|avenue|crescent|drive|highway|lane|place|street|terrace/gi, function(matched){
+            return mapAbbrObj[matched];
+        });
+
+        observeElement(streetAddress, "value", function (oldValue, newValue) {
+            var compareAdd2 = newValue.replace(/road|avenue|crescent|drive|highway|lane|place|street|terrace|road/gi, function(matched){
+                return mapAbbrObj[matched];
+            }).toUpperCase();
+            var compareAddTemp = compareAdd1.replace(document.getElementById('Destination_Suburb').value,"").replace(",","").trim();
+            if(compareAddTemp == compareAdd2){
+                streetAddress.setAttribute("style", "border-color:#080");
+            } else {
+                streetAddress.setAttribute("style", "border-color:#ffcc00");
+            }
+
+            var suburb = document.getElementById('Destination_Suburb')
+            if(suburb.value.toUpperCase() == order.street2.toUpperCase() || !order.street2){
+                suburb.setAttribute("style", "border-color:#080");
+            } else {
+                suburb.setAttribute("style", "border-color:#ffcc00");
+            }
+
+            var city = document.getElementById('Destination_City');
+            if(city.value.toUpperCase() == order.city.toUpperCase()){
+                city.setAttribute("style", "border-color:#080");
+            } else {
+                city.setAttribute("style", "border-color:#ffcc00");
             }
         });
 
