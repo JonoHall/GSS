@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GoSweetSpot AutoFill
 // @namespace    http://tampermonkey.net/
-// @version      1.6
+// @version      1.7
 // @description  try to take over the world!
 // @author       JH
 // @match        https://*/EcommOrderImport/View?ecommerceOrderImportPK=*
@@ -118,7 +118,6 @@
         panel.append(panelCollapse);
 
         var order = GM_getValue("order");
-        console.log(order.freightCost);
         var newline = "\r\n";
         document.getElementById('RawImport').textContent = order.street1 + newline;
         (order.street2) ? document.getElementById('RawImport').textContent += order.street2 + newline : null;
@@ -170,38 +169,59 @@
             }
         });
 
-        var mapAbbrObj = {
-            ROAD: "RD", AVENUE: "AVE", CRESCENT: "CRES", DRIVE: "DR", HIGHWAY: "HWY", LANE: "LN", PLACE: "PL", STREET: "ST", TERRACE: "TCE"
+        var mapReplaceObj = {
+            HAMILTON: "WAIKATO", ROAD: "RD", AVENUE: "AVE", CRESCENT: "CRES", DRIVE: "DR", HIGHWAY: "HWY", LANE: "LN", PLACE: "PL", STREET: "ST", TERRACE: "TCE"
         };
 
-        var compareAdd1 = order.street1.toUpperCase();
-        compareAdd1 = compareAdd1.replace(/road|avenue|crescent|drive|highway|lane|place|street|terrace/gi, function(matched){
-            return mapAbbrObj[matched];
+        function objToString (obj) {
+            let str = '';
+            for (const [p, val] of Object.entries(obj)) {
+                str += `${p}|`;
+            }
+            return str;
+        }
+
+        var replaceStrg = objToString(mapReplaceObj)
+        var replaceRegEx = new RegExp(replaceStrg.substring(0, replaceStrg.length - 1), "gi")
+
+        var compareAddressOriginal = order.street1.toUpperCase();
+        compareAddressOriginal = compareAddressOriginal.replace(replaceRegEx, function(matched){
+            return mapReplaceObj[matched];
         });
 
         observeElement(streetAddress, "value", function (oldValue, newValue) {
-            var compareAdd2 = newValue.replace(/road|avenue|crescent|drive|highway|lane|place|street|terrace|road/gi, function(matched){
-                return mapAbbrObj[matched];
+            var compareAddressNew = newValue.replace(replaceRegEx, function(matched){
+                return mapReplaceObj[matched];
             }).toUpperCase();
-            var compareAddTemp = compareAdd1.replace(document.getElementById('Destination_Suburb').value,"").replace(",","").trim();
-            if(compareAddTemp == compareAdd2){
+            compareAddressNew = compareAddressNew.replace(document.getElementById('Destination_Suburb').value,"").replace(",","").trim();
+            console.log(compareAddressOriginal + "==" + compareAddressNew);
+            if(compareAddressOriginal == compareAddressNew){
                 streetAddress.setAttribute("style", "border-color:#080");
             } else {
-                streetAddress.setAttribute("style", "border-color:#ffcc00");
+                streetAddress.setAttribute("style", "border-color:#f00");
             }
 
             var suburb = document.getElementById('Destination_Suburb')
-            if(suburb.value.toUpperCase() == order.street2.toUpperCase() || !order.street2){
-                suburb.setAttribute("style", "border-color:#080");
-            } else {
-                suburb.setAttribute("style", "border-color:#ffcc00");
+
+            if(order.street2){
+                if(suburb.value.toUpperCase() == order.street2.toUpperCase()){
+                    suburb.setAttribute("style", "border-color:#080");
+                } else {
+                    suburb.setAttribute("style", "border-color:#f00");
+                }
             }
 
+            var compareCity = order.city.toUpperCase();
+            compareCity = compareCity.replace(replaceRegEx, function(matched){
+                return mapReplaceObj[matched];
+            });
+
             var city = document.getElementById('Destination_City');
-            if(city.value.toUpperCase() == order.city.toUpperCase()){
+
+            if(city.value.toUpperCase() == compareCity){
                 city.setAttribute("style", "border-color:#080");
             } else {
-                city.setAttribute("style", "border-color:#ffcc00");
+                city.setAttribute("style", "border-color:#f00");
             }
         });
 
