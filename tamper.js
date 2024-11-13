@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GoSweetSpot AutoFill
 // @namespace    http://tampermonkey.net/
-// @version      2.0
+// @version      2.0.1
 // @description  try to take over the world!
 // @author       JH
 // @match        https://*/EcommOrderImport/View?ecommerceOrderImportPK=*
@@ -26,7 +26,8 @@
                 addressObj.street1 = addressRaw[2];
                 addressObj.street2 = (addressRaw.length == 5) ? addressRaw[3] : "";
                 addressObj.city = addressRaw[addressRaw.length - 1].split(',')[0];
-                addressObj.postcode = addressRaw[addressRaw.length - 1].split(',').pop().split(' ')[1];
+                var lastLine = addressRaw[addressRaw.length - 1].split(',').pop().split(' ');
+                addressObj.postCode = lastLine[lastLine.length - 2];
                 return addressObj;
             }
             var orderObj = {};
@@ -54,7 +55,7 @@
         function shipInv() {
             var orderObj = copyDetails();
             GM_setValue("order", orderObj);
-            //window.location.href = 'https://'+location.hostname+'/Order/SendInvoice?orderPK='+orderObj.orderPK;
+            window.location.href = 'https://'+location.hostname+'/Order/SendInvoice?orderPK='+orderObj.orderPK;
         }
 
         if(document.getElementsByClassName("col-lg-4")[8]){
@@ -113,24 +114,20 @@
         var newline = "\r\n";
         document.getElementById('RawImport').textContent = address.street1 + newline;
         (address.street2) ? document.getElementById('RawImport').textContent += address.street2 + newline : null;
-        document.getElementById('RawImport').textContent += address.city + ", " + address.postcode;
+        document.getElementById('RawImport').textContent += address.city + ", " + address.postCode;
 
-        document.getElementById('Destination_Name').value = order.contact;
-        if(order.business) {
-            document.getElementById('Destination_Building').value = order.business
+        document.getElementById('Destination_Name').value = order.contactName;
+        if(order.businessName) {
+            document.getElementById('Destination_Building').value = order.businessName
         }
         var streetAddress = document.getElementById('Destination_StreetAddress');
         streetAddress.value = order.addressObj.street1;
         document.getElementById('Destination_Phone').value = order.phone
         document.getElementById('Destination_Email').value = order.email
         document.getElementById('Destination_DeliveryInstructions').value = order.notes ? order.notes : null;
-        document.getElementById('CustomerReference').value = order.id
+        document.getElementById('CustomerReference').value = order.orderNo
 
         streetAddress.dispatchEvent(new Event('keyup', { 'bubbles': true }));
-
-        let inputBox = document.getElementById('Destination_Postcode');
-
-        (inputBox.value == order.postcode) ? inputBox.setAttribute("style", "border-color:#080") : inputBox.setAttribute("style", "border-color:#f00;");
 
         function observeElement(element, property, callback, delay = 0) {
             let elementPrototype = Object.getPrototypeOf(element);
@@ -153,16 +150,8 @@
             }
         }
 
-        observeElement(inputBox, "value", function (oldValue, newValue) {
-            if(newValue == address.postcode){
-                inputBox.setAttribute("style", "border-color:#080");
-            } else {
-                inputBox.setAttribute("style", "border-color:#f00;");
-            }
-        });
-
         var mapReplaceObj = {
-            CHRISTCHURCH: "CANTERBURY", HAMILTON: "WAIKATO", ROAD: "RD", AVENUE: "AVE", CRESCENT: "CRES", DRIVE: "DR", HIGHWAY: "HWY", LANE: "LN", PLACE: "PL", STREET: "ST", TERRACE: "TCE"
+            HAMILTON: "WAIKATO", ROAD: "RD", AVENUE: "AVE", CRESCENT: "CRES", DRIVE: "DR", HIGHWAY: "HWY", LANE: "LN", PLACE: "PL", STREET: "ST", TERRACE: "TCE"
         };
 
         function objToString (obj) {
@@ -179,21 +168,28 @@
         var compareAddressOriginal = address.street1.toUpperCase();
         compareAddressOriginal = compareAddressOriginal.replace(replaceRegEx, function(matched){
             return mapReplaceObj[matched];
-        });
+        }).replace("'","");
 
         observeElement(streetAddress, "value", function (oldValue, newValue) {
+            let inputBox = document.getElementById('Destination_Postcode');
+            let suburb = document.getElementById('Destination_Suburb');
+            (inputBox.value == address.postCode) ? inputBox.setAttribute("style", "border-color:#080") : inputBox.setAttribute("style", "border-color:#f00;");
+
             var compareAddressNew = newValue.replace(replaceRegEx, function(matched){
                 return mapReplaceObj[matched];
-            }).toUpperCase();
-            var compareAddressOriginalSuburbRemoved = compareAddressOriginal.replace(document.getElementById('Destination_Suburb').value,"").replace(",","").trim();
-            console.log(compareAddressOriginalSuburbRemoved + "=" +compareAddressNew)
-            if(compareAddressOriginalSuburbRemoved.replace("'","") == compareAddressNew.replace("'","")){
+            }).toUpperCase().replace("'","");
+            if(compareAddressOriginal.match(suburb.value) || address.street2 == suburb.value){
+                suburb.setAttribute("style", "border-color:#080");
+                compareAddressOriginal = compareAddressOriginal;
+            } else {
+                suburb.removeAttribute("style", "border-color:#080");
+            }
+
+            if(compareAddressOriginal.replace(document.getElementById('Destination_Suburb').value,"").replace(",","").trim() == compareAddressNew){
                 streetAddress.setAttribute("style", "border-color:#080");
             } else {
                 streetAddress.setAttribute("style", "border-color:#f00");
             }
-
-            var suburb = document.getElementById('Destination_Suburb')
 
             if(order.street2){
                 if(suburb.value.toUpperCase() == order.street2.toUpperCase()){
