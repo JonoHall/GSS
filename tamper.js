@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GoSweetSpot AutoFill
 // @namespace    http://tampermonkey.net/
-// @version      2.0.1
+// @version      2.1
 // @description  try to take over the world!
 // @author       JH
 // @match        https://*/EcommOrderImport/View?ecommerceOrderImportPK=*
@@ -52,32 +52,35 @@
             return orderObj;
         }
 
-        function shipInv() {
-            var orderObj = copyDetails();
-            GM_setValue("order", orderObj);
-            window.location.href = 'https://'+location.hostname+'/Order/SendInvoice?orderPK='+orderObj.orderPK;
-        }
-
         if(document.getElementsByClassName("col-lg-4")[8]){
             var InvoicedOn = null;
             var shipType = (document.getElementsByClassName("col-lg-4")[9].getElementsByTagName('dt')[0].innerText == "Ship Type:") ? document.getElementsByClassName("col-lg-4")[9].getElementsByTagName('dd')[0].innerText : null;
             var shippedOn = (document.getElementsByClassName("col-lg-4")[5].getElementsByTagName('dt')[5].innerText == "Shipped On:") ? document.getElementsByClassName("col-lg-4")[5].getElementsByTagName('dd')[5].innerText : null;
+            var activeStatus = document.getElementById("OrderProgressBar").getElementsByClassName("active")[0].innerText;
             if(document.getElementsByClassName("col-lg-4")[5].getElementsByTagName('dt')[6]){
                 InvoicedOn = (document.getElementsByClassName("col-lg-4")[5].getElementsByTagName('dt')[6].innerText == "Invoiced On:") ? document.getElementsByClassName("col-lg-4")[5].getElementsByTagName('dd')[6].innerText : null;
             }
             const shipInvButton = document.createElement('button');
+
             var shipInvButtonI = document.createElement('i');
             shipInvButtonI.classList.add("fas","fa-truck");
+
             (shipType == "Pickup") ? shipInvButton.innerText = ' Ship Pickup Order' : shipInvButton.innerText = ' GoSweetSpot';
+
             shipInvButton.prepend(shipInvButtonI);
             shipInvButton.addEventListener('click', () => {
-                shipInv();
+                var orderObj = copyDetails();
+                GM_setValue("order", orderObj);
+                if(activeStatus == "Shipped"){
+                    window.location.href = 'https://'+location.hostname+'/Order/SendInvoice?orderPK='+orderObj.orderPK;
+                }
             });
+
             shipInvButton.classList.add("btn","btn-sm");
             if(shipType == "Pickup"){
                 shipInvButton.classList.add("btn-danger")
             } else {
-                (shipType != "Courier" || !shippedOn || InvoicedOn) ? shipInvButton.classList.add("btn-secondary") : shipInvButton.classList.add("btn-primary");
+                (activeStatus == "Shipped") ? shipInvButton.classList.add("btn-primary") : shipInvButton.classList.add("btn-secondary");
             }
             var buttons = document.getElementsByClassName("ibox-content")[0].getElementsByClassName("pull-right m-l-xs")[0];
             buttons.prepend(shipInvButton);
@@ -219,15 +222,25 @@
 
     function ecommImport() {
         var iBoxes = document.getElementsByClassName('ibox');
-        Array.from(iBoxes).forEach((iBox) => {
-            var leftCol = iBox.getElementsByClassName('col-lg-6 border-right')[0];
-            if(leftCol){
+        if(iBoxes.length > 1){
+            Array.from(iBoxes).slice(1).forEach((iBox) => {
+                var leftCol = iBox.getElementsByClassName('col-lg-6 border-right')[0];
+                var rightCol = iBox.getElementsByClassName("col-lg-6")[3];
                 var shipType = leftCol.getElementsByClassName('pull-left')[0];
                 if(shipType.innerText.includes('Pickup')){
                     shipType.classList.add("text-danger");
                 }
-            }
-        });
+                var importEmail = iBox.getElementsByClassName("row m-t")[0].getElementsByClassName("col-lg-6")[0].innerText.split(/\r\n|\n/).filter(element => element.includes("E-Mail"))[0].split("E-Mail: ")[1];
+                var matchRows = rightCol.getElementsByClassName("row");
+                Array.from(matchRows).forEach((row) => {
+                    var matchData = row.getElementsByTagName('div')[0]
+                    var matchEmail = matchData.innerText.split(/\r\n|\n/).filter(element => element.includes("E-Mail"))[0].split("E-Mail: ")[1];
+                    if(importEmail == matchEmail){
+                        matchData.classList.add("text-success");
+                    }
+                });
+            });
+        }
     }
 
     if (/Order\/View/.test (location.pathname) ) {
@@ -236,7 +249,7 @@
     else if (/phc\.gosweetspot\.com/.test (location.hostname) ) {
         GM_addValueChangeListener("order", function() {
             if(GM_getValue("order")) {
-               window.location.href = 'https://phc.gosweetspot.com/ship?order='+GM_getValue("order").id;
+               window.location.href = 'https://phc.gosweetspot.com/ship';
             }
         });
         if(GM_getValue("order")){
