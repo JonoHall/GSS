@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         GoSweetSpot AutoFill
 // @namespace    http://tampermonkey.net/
-// @version      1.7
+// @version      2.0
 // @description  try to take over the world!
 // @author       JH
 // @match        https://*/EcommOrderImport/View?ecommerceOrderImportPK=*
+// @match        https://*/Order/View*
 // @match        https://phc.gosweetspot.com/ship*
-// @match        https://amp.roweadvanced.com.au/EcommOrderImport/ImportOrders
+// @match        https://*/EcommOrderImport/ImportOrders
 // @updateURL  https://raw.githubusercontent.com/JonoHall/GSS/refs/heads/main/tamper.js
 // @downloadURL  https://raw.githubusercontent.com/JonoHall/GSS/refs/heads/main/tamper.js
 // @icon         https://gosweetspotcdn.blob.core.windows.net/images/favicon-phc.ico
@@ -19,77 +20,67 @@
     'use strict';
     function run() {
         function copyDetails() {
-            var [notes,phone,email,contact,business,street1,street2] = "";
-            var id = document.getElementsByClassName("ibox-content")[0].getElementsByTagName('h2')[0].innerText.split(" ")[3];
-            var rawAddress = document.getElementsByClassName("font-large")[1].innerText;
-            var addressDetails = rawAddress.split("\n");
-            var notesDiv = document.getElementsByClassName("panel-body no-borders full-height-scroll")[0];
-
-            var tempAddress = addressDetails.slice(2);
-            var last = tempAddress.findIndex((x) => x == "");
-            var address = tempAddress.slice(0,last);
-
-            street1 = address[0];
-
-            var city = address[address.length - 1].split(',')[0];
-            var postcode = address[address.length - 1].split(',').pop().split(' ')[1];
-
-            if(address.length == 3) {
-                street2 = address[1];
+            function splitAddress(addressRaw) {
+                var addressObj = {};
+                addressObj.addContact = addressRaw[0];
+                addressObj.street1 = addressRaw[2];
+                addressObj.street2 = (addressRaw.length == 5) ? addressRaw[3] : "";
+                addressObj.city = addressRaw[addressRaw.length - 1].split(',')[0];
+                addressObj.postcode = addressRaw[addressRaw.length - 1].split(',').pop().split(' ')[1];
+                return addressObj;
             }
+            var orderObj = {};
 
-            if(typeof notesDiv !== "undefined") { notes = notesDiv.getElementsByClassName("multiline")[0].innerText; }
+            const orderViewJsData = document.getElementById("orderViewJsData");
 
-            phone = addressDetails.find(el => el.includes('Phone:')).replace('Phone: ','');
+            var relatedLazyLoadURL = new URLSearchParams(orderViewJsData.dataset.relatedlazyloadurl.toString().split('?')[1]);
+            orderObj.orderNo = relatedLazyLoadURL.get("orderNo");
+            orderObj.orderPK = relatedLazyLoadURL.get("orderPK");
+            var addressObj = splitAddress(document.getElementsByClassName("col-lg-6 p-w-lg")[1].innerText.split("\n").slice(1));
+            orderObj.addressObj = addressObj;
+            var notes = document.getElementsByClassName("panel-body no-borders full-height-scroll")[0].getElementsByTagName('p')[0].innerText;
+            orderObj.notes = (notes == "None") ? "" : notes;
+            var contactDetails = document.getElementsByClassName("col-lg-4")[8].getElementsByClassName("dl-horizontal")[0].getElementsByTagName('dd');
 
-            email = addressDetails.find(el => el.includes('E-Mail:')).replace('E-Mail:','');
+            orderObj.contactName = (contactDetails[0].innerText.trim() != "None") ? contactDetails[0].innerText.trim() : addressObj.addContact;
+            orderObj.businessName = (contactDetails[0].innerText.trim() != "None") ? addressObj.addContact : "";
 
-            contact = addressDetails.find(el => el.includes('Contact Name: '));
-            if(contact) {
-                contact = contact.replace('Contact Name: ','');
-                business = addressDetails[0];
-            } else {
-                contact = addressDetails[0];
-            }
+            orderObj.phone = contactDetails[2].innerText.trim();
+            orderObj.email = contactDetails[4].getElementsByTagName('button')[0].dataset.emailto;
 
-            var totals = document.getElementsByClassName("dl-horizontal m-b-none");
-
-            var freightCost = totals[2].childNodes[7].innerText;
-            var orderObj = {id: id, rawAddress: rawAddress, street1: street1, street2: street2, city:city, postcode:postcode, phone: phone, email: email, contact: contact, business: business, notes: notes, freightCost: freightCost};
-            GM_setValue("order", orderObj);
             return orderObj;
-        }
-
-        function ship() {
-            var orderObj = copyDetails();
-            window.location.href = 'https://phc.gosweetspot.com/ship?order='+orderObj.id;
         }
 
         function shipInv() {
             var orderObj = copyDetails();
-            var orderPK = document.getElementsByClassName("ibox-content")[0].getElementsByTagName('h3')[0].getElementsByTagName('a')[0].getAttribute("href");
-            const urlParams = new URLSearchParams(orderPK);
-            orderPK = urlParams.get('/Order/View?orderPK');
-            window.location.href = 'https://'+location.hostname+'/Order/SendInvoice?orderPK='+orderPK;
+            GM_setValue("order", orderObj);
+            //window.location.href = 'https://'+location.hostname+'/Order/SendInvoice?orderPK='+orderObj.orderPK;
         }
 
-        var ibox = document.getElementsByClassName("ibox-content")[0];
-
-        var shipType = document.getElementsByClassName("dl-horizontal m-b-none")[1].getElementsByTagName('dd')[0].innerText;
-
-        const shipInvButton = document.createElement('button');
-        var shipInvButtonI = document.createElement('i');
-        shipInvButtonI.classList.add("fas","fa-file");
-        (shipType == "Pickup") ? shipInvButton.innerText = ' Ship Pickup Order + Invoice' : shipInvButton.innerText = ' Ship Order + Invoice';
-        shipInvButton.prepend(shipInvButtonI);
-        shipInvButton.addEventListener('click', () => {
-            shipInv();
-        });
-        shipInvButton.classList.add("btn","m-l-xs","btn-sm");
-        (shipType == "Pickup") ? shipInvButton.classList.add("btn-danger") : shipInvButton.classList.add("btn-primary")
-        shipInvButton.style.float = "right";
-        ibox.prepend(shipInvButton);
-
+        if(document.getElementsByClassName("col-lg-4")[8]){
+            var InvoicedOn = null;
+            var shipType = (document.getElementsByClassName("col-lg-4")[9].getElementsByTagName('dt')[0].innerText == "Ship Type:") ? document.getElementsByClassName("col-lg-4")[9].getElementsByTagName('dd')[0].innerText : null;
+            var shippedOn = (document.getElementsByClassName("col-lg-4")[5].getElementsByTagName('dt')[5].innerText == "Shipped On:") ? document.getElementsByClassName("col-lg-4")[5].getElementsByTagName('dd')[5].innerText : null;
+            if(document.getElementsByClassName("col-lg-4")[5].getElementsByTagName('dt')[6]){
+                InvoicedOn = (document.getElementsByClassName("col-lg-4")[5].getElementsByTagName('dt')[6].innerText == "Invoiced On:") ? document.getElementsByClassName("col-lg-4")[5].getElementsByTagName('dd')[6].innerText : null;
+            }
+            const shipInvButton = document.createElement('button');
+            var shipInvButtonI = document.createElement('i');
+            shipInvButtonI.classList.add("fas","fa-truck");
+            (shipType == "Pickup") ? shipInvButton.innerText = ' Ship Pickup Order' : shipInvButton.innerText = ' GoSweetSpot';
+            shipInvButton.prepend(shipInvButtonI);
+            shipInvButton.addEventListener('click', () => {
+                shipInv();
+            });
+            shipInvButton.classList.add("btn","btn-sm");
+            if(shipType == "Pickup"){
+                shipInvButton.classList.add("btn-danger")
+            } else {
+                (shipType != "Courier" || !shippedOn || InvoicedOn) ? shipInvButton.classList.add("btn-secondary") : shipInvButton.classList.add("btn-primary");
+            }
+            var buttons = document.getElementsByClassName("ibox-content")[0].getElementsByClassName("pull-right m-l-xs")[0];
+            buttons.prepend(shipInvButton);
+        }
     }
 
     function GssRun() {
@@ -118,17 +109,18 @@
         panel.append(panelCollapse);
 
         var order = GM_getValue("order");
+        var address = order.addressObj;
         var newline = "\r\n";
-        document.getElementById('RawImport').textContent = order.street1 + newline;
-        (order.street2) ? document.getElementById('RawImport').textContent += order.street2 + newline : null;
-        document.getElementById('RawImport').textContent += order.city + ", " + order.postcode;
+        document.getElementById('RawImport').textContent = address.street1 + newline;
+        (address.street2) ? document.getElementById('RawImport').textContent += address.street2 + newline : null;
+        document.getElementById('RawImport').textContent += address.city + ", " + address.postcode;
 
         document.getElementById('Destination_Name').value = order.contact;
         if(order.business) {
             document.getElementById('Destination_Building').value = order.business
         }
         var streetAddress = document.getElementById('Destination_StreetAddress');
-        streetAddress.value = order.street1;
+        streetAddress.value = order.addressObj.street1;
         document.getElementById('Destination_Phone').value = order.phone
         document.getElementById('Destination_Email').value = order.email
         document.getElementById('Destination_DeliveryInstructions').value = order.notes ? order.notes : null;
@@ -162,7 +154,7 @@
         }
 
         observeElement(inputBox, "value", function (oldValue, newValue) {
-            if(newValue == order.postcode){
+            if(newValue == address.postcode){
                 inputBox.setAttribute("style", "border-color:#080");
             } else {
                 inputBox.setAttribute("style", "border-color:#f00;");
@@ -170,7 +162,7 @@
         });
 
         var mapReplaceObj = {
-            HAMILTON: "WAIKATO", ROAD: "RD", AVENUE: "AVE", CRESCENT: "CRES", DRIVE: "DR", HIGHWAY: "HWY", LANE: "LN", PLACE: "PL", STREET: "ST", TERRACE: "TCE"
+            CHRISTCHURCH: "CANTERBURY", HAMILTON: "WAIKATO", ROAD: "RD", AVENUE: "AVE", CRESCENT: "CRES", DRIVE: "DR", HIGHWAY: "HWY", LANE: "LN", PLACE: "PL", STREET: "ST", TERRACE: "TCE"
         };
 
         function objToString (obj) {
@@ -181,10 +173,10 @@
             return str;
         }
 
-        var replaceStrg = objToString(mapReplaceObj)
-        var replaceRegEx = new RegExp(replaceStrg.substring(0, replaceStrg.length - 1), "gi")
+        var replaceStrg = objToString(mapReplaceObj);
+        var replaceRegEx = new RegExp(replaceStrg.substring(0, replaceStrg.length - 1), "gi");
 
-        var compareAddressOriginal = order.street1.toUpperCase();
+        var compareAddressOriginal = address.street1.toUpperCase();
         compareAddressOriginal = compareAddressOriginal.replace(replaceRegEx, function(matched){
             return mapReplaceObj[matched];
         });
@@ -193,9 +185,9 @@
             var compareAddressNew = newValue.replace(replaceRegEx, function(matched){
                 return mapReplaceObj[matched];
             }).toUpperCase();
-            compareAddressNew = compareAddressNew.replace(document.getElementById('Destination_Suburb').value,"").replace(",","").trim();
-            console.log(compareAddressOriginal + "==" + compareAddressNew);
-            if(compareAddressOriginal == compareAddressNew){
+            var compareAddressOriginalSuburbRemoved = compareAddressOriginal.replace(document.getElementById('Destination_Suburb').value,"").replace(",","").trim();
+            console.log(compareAddressOriginalSuburbRemoved + "=" +compareAddressNew)
+            if(compareAddressOriginalSuburbRemoved.replace("'","") == compareAddressNew.replace("'","")){
                 streetAddress.setAttribute("style", "border-color:#080");
             } else {
                 streetAddress.setAttribute("style", "border-color:#f00");
@@ -211,7 +203,7 @@
                 }
             }
 
-            var compareCity = order.city.toUpperCase();
+            var compareCity = address.city.toUpperCase();
             compareCity = compareCity.replace(replaceRegEx, function(matched){
                 return mapReplaceObj[matched];
             });
@@ -242,7 +234,7 @@
         });
     }
 
-    if (/EcommOrderImport\/View/.test (location.pathname) ) {
+    if (/Order\/View/.test (location.pathname) ) {
         run();
     }
     else if (/phc\.gosweetspot\.com/.test (location.hostname) ) {
@@ -261,7 +253,6 @@
         ecommImport();
     }
     else {
-        // Run fall-back code, if any
     }
 
 })();
