@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GoSweetSpot AutoFill
 // @namespace    http://tampermonkey.net/
-// @version      2.2
+// @version      2.2.1
 // @description  try to take over the world!
 // @author       JH
 // @match        https://*/EcommOrderImport/View?ecommerceOrderImportPK=*
@@ -234,10 +234,11 @@
                 var importEmail = iBox.getElementsByClassName("row m-t")[0].getElementsByClassName("col-lg-6")[0].innerText.split(/\r\n|\n/).filter(element => element.includes("E-Mail"))[0].split("E-Mail: ")[1];
                 var matchRows = rightCol.getElementsByClassName("row");
                 Array.from(matchRows).forEach((row) => {
-                    var matchData = row.getElementsByTagName('div')[0]
-                    var matchEmail = matchData.innerText.split(/\r\n|\n/).filter(element => element.includes("E-Mail"))[0].split("E-Mail: ")[1];
+                    var matchDataDiv = row.getElementsByTagName('div')[0];
+                    var matchDataEmailArray = matchDataDiv.innerText.split(/\r\n|\n/).filter(element => element.includes("E-Mail"));
+                    var matchEmail = (matchDataEmailArray.length) ? matchDataEmailArray[0].split("E-Mail: ")[1] : null;
                     if(importEmail.match(matchEmail)){
-                        matchData.classList.add("text-success");
+                        matchDataDiv.classList.add("text-success");
                     }
                 });
             });
